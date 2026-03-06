@@ -11,8 +11,15 @@ public class GameplaySceneInstaller : MonoInstaller
     {
         Container.Bind<PlayerModel>().AsSingle();
 
+        Container.BindFactory<int, int, LevelModel, LevelModel.Factory>();
+
         Container.Bind<TurnController>().AsSingle();
         Container.Bind<LuckController>().AsSingle();
+        Container.Bind<LevelGenerationController>().AsSingle();
+
+        Container.BindFactory<int, int, TileData, TileView, TileView.Factory>()
+            .FromComponentInNewPrefab(_tilePrefab)
+            .UnderTransform(_gridParent);
 
         Container.Bind<HudView>().FromComponentInNewPrefab(_hudPrefab).AsSingle().NonLazy();
     }

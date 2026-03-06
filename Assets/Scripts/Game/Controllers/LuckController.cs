@@ -6,18 +6,18 @@ using System;
 public class LuckController : IInitializable, IDisposable
 {
     private readonly PlayerModel _playerModel;
-    private readonly LevelModel _levelModel;
+    private readonly LevelGenerationController _levelGenController;
     private readonly CompositeDisposable _disposables = new CompositeDisposable();
 
-    public LuckController(PlayerModel playerModel, LevelModel levelModel)
+    public LuckController(PlayerModel playerModel, LevelGenerationController levelGenController)
     {
         _playerModel = playerModel;
-        _levelModel = levelModel;
+        _levelGenController = levelGenController;
     }
 
     public void Initialize()
     {
-        _levelModel.OnTileOpen
+        _levelGenController.OnTileOpenedAsObservable()
             .Subscribe(LuckChance)
             .AddTo(_disposables);
     }

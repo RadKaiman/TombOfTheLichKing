@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using UniRx;
 using UnityEngine.EventSystems;
+using Zenject;
+using TMPro;
 
 public class TileView : MonoBehaviour, IPointerClickHandler
 {
@@ -15,7 +17,10 @@ public class TileView : MonoBehaviour, IPointerClickHandler
     private TileData _tileData;
     private int _x, _y;
 
-    public Subject<TileView> OnTileClicked { get; private set; }
+    public int X => _x;
+    public int Y => _y;
+
+    public Subject<TileView> OnTileClicked { get; private set; } = new Subject<TileView>();
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -29,11 +34,6 @@ public class TileView : MonoBehaviour, IPointerClickHandler
         
     }
 
-    private void Awake()
-    {
-        OnTileClicked = new Subject<TileView>();
-    }
-
     public void Initialize(int x, int y, TileData data)
     {
         _x = x;
@@ -42,7 +42,7 @@ public class TileView : MonoBehaviour, IPointerClickHandler
         UpdateView();
     }
 
-    private void UpdateView()
+    public void UpdateView()
     {
         if (!_tileData.IsOpen)
         {
@@ -53,7 +53,10 @@ public class TileView : MonoBehaviour, IPointerClickHandler
         switch (_tileData.Type)
         {
             case TileType.Empty:
-                _iconImage.sprite = _emptySprite; // нужно ещё добавить цифры сколько вокруг сокровищ 
+                _iconImage.sprite = _emptySprite;
+                var text = GetComponentInChildren<TMP_Text>();
+                if (text != null)
+                    text.text = _tileData.HintNumber > 0 ? _tileData.HintNumber.ToString() : "";
                 break;
             case TileType.Chest:
                 _iconImage.sprite = _chestSprite;
@@ -74,4 +77,11 @@ public class TileView : MonoBehaviour, IPointerClickHandler
             OnTileClicked.OnNext(this);
         }
     }
+
+    private void OnDestroy()
+    {
+        OnTileClicked?.Dispose();
+    }
+
+    public class Factory : PlaceholderFactory<int, int, TileData, TileView> { }
 }

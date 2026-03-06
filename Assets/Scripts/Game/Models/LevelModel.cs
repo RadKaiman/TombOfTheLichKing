@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using UniRx;
+using Zenject;
 
 public class LevelModel
 {
@@ -45,6 +46,8 @@ public class LevelModel
 
         return true;
     }
+
+    public class Factory : PlaceholderFactory<int, int, LevelModel> { }
 }
 
 [Serializable]
