@@ -8,8 +8,6 @@ public class PlayerModel
     public ReactiveProperty<int> MaxHealth { get; private set; }
     public ReactiveProperty<int> Health { get; private set; }
     public ReactiveProperty<int> Gold { get; private set; }
-    public ReactiveProperty<int> CurrentTurn { get; private set; }
-    public ReactiveProperty<int> MaxTurn { get; private set; }
 
     public IntReactiveProperty VitalityLevel { get; private set; }
     public IntReactiveProperty LuckLevel { get; private set; }
@@ -23,8 +21,6 @@ public class PlayerModel
         MaxHealth = new ReactiveProperty<int>(10);
         Health = new ReactiveProperty<int>(10);
         Gold = new ReactiveProperty<int>(0);
-        CurrentTurn = new ReactiveProperty<int>(0);
-        MaxTurn = new ReactiveProperty<int>(15);
 
         VitalityLevel = new IntReactiveProperty(1);
         LuckLevel = new IntReactiveProperty(1);
@@ -62,21 +58,6 @@ public class PlayerModel
     public bool CanBuy(int amount)
     {
         return Gold.Value >= amount;
-    }
-
-    public void UseTurn()
-    {
-        CurrentTurn.Value++;
-    }
-
-    public bool CanMakeTurn()
-    {
-        return CurrentTurn.Value < MaxTurn.Value;
-    }
-
-    public void ResetTurns()
-    {
-        CurrentTurn.Value = 0;
     }
 
     public void RestoreHealthBetweenLevels()

@@ -6,25 +6,31 @@ using System.Collections.Generic;
 public class LevelGenerationController : IDisposable
 {
     private readonly PlayerModel _playerModel;
+    private readonly LevelModel.Factory _levelFactory;
     private readonly TileView.Factory _tileFactory;
     private readonly CompositeDisposable _disposables = new CompositeDisposable();
 
     private LevelModel _currentLevel;
     private List<TileView> _activeTiles = new List<TileView>();
 
-    public Subject<TileData> OnTileOpen { get; private set; } = new Subject<TileData>();
-    public Subject<Unit> OnLevelGenerated { get; private set; } = new Subject<Unit>();
+    public Subject<LevelModel> OnLevelGenerated { get; private set; } = new Subject<LevelModel>();
     public Subject<Unit> OnLevelCompleted { get; private set; } = new Subject<Unit>();
 
-    public LevelGenerationController(PlayerModel playerModel, TileView.Factory tileFactory)
+    public LevelGenerationController(PlayerModel playerModel, LevelModel.Factory levelFactory, TileView.Factory tileFactory)
     {
         _playerModel = playerModel;
+        _levelFactory = levelFactory;
         _tileFactory = tileFactory;
     }
 
     public LevelModel GenerateLevel(LevelDefinition definition)
     {
-        var model = new LevelModel(definition.Width, definition.Height);
+        int maxTurns = UnityEngine.Random.Range(
+            definition.MinTurns,
+            definition.MaxTurns + 1
+        );
+
+        var model = _levelFactory.Create(definition.Width, definition.Height, maxTurns);
 
         PlaceKey(model, definition);
 
@@ -32,25 +38,24 @@ public class LevelGenerationController : IDisposable
 
         CalculateHints(model);
 
-        SubscribeToTileOpen(model);
+        SubscribeToLevelEvents(model);
 
         SpawnTiles(model);
 
         _currentLevel = model;
 
-        OnLevelGenerated.OnNext(Unit.Default);
+        OnLevelGenerated.OnNext(model);
 
         return model;
     }
 
-    private void SubscribeToTileOpen(LevelModel model)
+    private void SubscribeToLevelEvents(LevelModel model)
     {
-        model.OnTileOpen
-            .Subscribe(tileData =>
+        model.IsLevelCompleted
+            .Where(completed => completed)
+            .Subscribe(_ =>
             {
-                OnTileOpen.OnNext(tileData);
-
-                HandleTileOpen(tileData);
+                OnLevelCompleted.OnNext(Unit.Default);
             })
             .AddTo(_disposables);
     }
@@ -132,9 +137,9 @@ public class LevelGenerationController : IDisposable
         {
             for (int y = 0; y < model.Height; y++)
             {
-                if (model.Tiles[x, y].Type != TileType.Empty) continue;
-
                 int chestCount = 0;
+                int skeleticCount = 0;
+
                 for (int dx = -1; dx <= 1; dx++)
                 {
                     for (int dy = -1; dy <= 1; dy++)
@@ -145,12 +150,17 @@ public class LevelGenerationController : IDisposable
                         int ny = y + dy;
                         if (nx >= 0 && nx < model.Width && ny >= 0 && ny < model.Height)
                         {
-                            if (model.Tiles[nx, ny].Type == TileType.Chest)
+                            TileType neighborType = model.Tiles[nx, ny].Type;
+                            if (neighborType == TileType.Chest)
                                 chestCount++;
+                            else if (neighborType == TileType.Skeletic)
+                                skeleticCount++;
                         }
                     }
                 }
-                model.Tiles[x, y].HintNumber = chestCount;
+
+                model.Tiles[x, y].ChestCount = chestCount;
+                model.Tiles[x, y].SkeleticCount = skeleticCount;
             }
         }
     }
@@ -184,17 +194,12 @@ public class LevelGenerationController : IDisposable
     {
         if (_currentLevel == null) return;
 
-        if (!_playerModel.CanMakeTurn())
-        {
-            Debug.Log("Ходов не осталось!");
-            return;
-        }
-
         bool open = _currentLevel.TryOpenTile(tile.X, tile.Y);
 
         if (open)
         {
             tile.UpdateView();
+            ApplyTileEffect(_currentLevel.Tiles[tile.X, tile.Y]);
         }
     }
 
@@ -210,17 +215,25 @@ public class LevelGenerationController : IDisposable
         _activeTiles.Clear();
     }
 
+    private void ApplyTileEffect(TileData tile)
+    {
+        switch (tile.Type)
+        {
+            case TileType.Chest:
+                _playerModel.AddGold(tile.Value);
+                break;
+            case TileType.Skeletic:
+                _playerModel.TakeDamage(tile.Value);
+                break;
+        }
+    }
+
     public LevelModel GetCurrentLevel()
     {
         return _currentLevel;
     }
 
-    public IObservable<TileData> OnTileOpenedAsObservable()
-    {
-        return OnTileOpen.AsObservable();
-    }
-
-    public IObservable<Unit> OnLevelGeneratedAsObservable()
+    public IObservable<LevelModel> OnLevelGeneratedAsObservable()
     {
         return OnLevelGenerated.AsObservable();
     }
@@ -233,7 +246,6 @@ public class LevelGenerationController : IDisposable
     public void Dispose()
     {
         _disposables.Dispose();
-        OnTileOpen?.Dispose();
         OnLevelGenerated?.Dispose();
         OnLevelCompleted?.Dispose();
     }

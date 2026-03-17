@@ -8,6 +8,12 @@ using TMPro;
 public class TileView : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] private Image _iconImage;
+
+    [Header("Counters")]
+    [SerializeField] private TMP_Text _chestText;
+    [SerializeField] private TMP_Text _skeleticText;
+
+    [Header("Sprites")]
     [SerializeField] private Sprite _closedSprite;
     [SerializeField] private Sprite _emptySprite;
     [SerializeField] private Sprite _chestSprite;
@@ -34,7 +40,8 @@ public class TileView : MonoBehaviour, IPointerClickHandler
         
     }
 
-    public void Initialize(int x, int y, TileData data)
+    [Inject]
+    public void Construct(int x, int y, TileData data)
     {
         _x = x;
         _y = y;
@@ -44,9 +51,12 @@ public class TileView : MonoBehaviour, IPointerClickHandler
 
     public void UpdateView()
     {
+        if (_iconImage == null) return;
+
         if (!_tileData.IsOpen)
         {
             _iconImage.sprite = _closedSprite;
+            HideCounters();
             return;
         }
 
@@ -54,20 +64,58 @@ public class TileView : MonoBehaviour, IPointerClickHandler
         {
             case TileType.Empty:
                 _iconImage.sprite = _emptySprite;
-                var text = GetComponentInChildren<TMP_Text>();
-                if (text != null)
-                    text.text = _tileData.HintNumber > 0 ? _tileData.HintNumber.ToString() : "";
+                ShowCounters();
                 break;
             case TileType.Chest:
                 _iconImage.sprite = _chestSprite;
+                HideCounters();
                 break;
             case TileType.Skeletic:
                 _iconImage.sprite = _skeleticSprite;
+                HideCounters();
                 break;
             case TileType.Key:
                 _iconImage.sprite = _keySprite;
+                HideCounters();
                 break;
         }
+    }
+
+    private void ShowCounters()
+    {
+        if (_chestText != null)
+        {
+            if (_tileData.ChestCount > 0)
+            {
+                _chestText.text = _tileData.ChestCount.ToString();
+                _chestText.gameObject.SetActive(true);
+            }
+            else
+            {
+                _chestText.gameObject.SetActive(false);
+            }
+        }
+
+        if (_skeleticText != null)
+        {
+            if (_tileData.SkeleticCount > 0)
+            {
+                _skeleticText.text = _tileData.SkeleticCount.ToString();
+                _skeleticText.gameObject.SetActive(true);
+            }
+            else
+            {
+                _skeleticText.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private void HideCounters()
+    {
+        if (_chestText != null)
+            _chestText.gameObject.SetActive(false);
+        if (_skeleticText != null)
+            _skeleticText.gameObject.SetActive(false);
     }
 
     public void OnPointerClick(PointerEventData eventData)
